@@ -1,6 +1,7 @@
 var bcrypt = require('bcrypt');
 var HASH_ROUNDS = 10;
 
+
 module.exports = function RedditAPI(conn) {
   return {
     createUser: function(user, callback) {
@@ -95,9 +96,19 @@ module.exports = function RedditAPI(conn) {
       var offset = (options.page || 0) * limit;
       
       conn.query(`
-        SELECT id, title, url, userId, createdAt, updatedAt
+        SELECT posts.id, 
+        posts.title, 
+        posts.url, 
+        posts.userId, 
+        posts.createdAt, 
+        posts.updatedAt, 
+        users.id, 
+        users.username, 
+        users.createdAt AS usersCreatedAt, 
+        users.updatedAt As userUpdatedAt
         FROM posts
-        ORDER BY createdAt DESC
+        JOIN users on posts.userId = users.id
+        ORDER BY createdAt ASC
         LIMIT ? OFFSET ?`
         , [limit, offset],
         function(err, results) {
@@ -110,5 +121,5 @@ module.exports = function RedditAPI(conn) {
         }
       );
     }
-  }
-}
+  };
+};

@@ -13,7 +13,7 @@ module.exports = function RedditAPI(conn) {
         }
         else {
           conn.query(
-            'INSERT INTO users (username,password, createdAt) VALUES (?, ?, ?)', [user.username, hashedPassword, new Date()],
+            'INSERT INTO users (username, password, createdAt) VALUES (?, ?, ?)', [user.username, hashedPassword, new Date()],
             function(err, result) {
               if (err) {
                 /*
@@ -72,7 +72,7 @@ module.exports = function RedditAPI(conn) {
             the post and send it to the caller!
             */
             conn.query(
-              'SELECT id,title,url,userId, createdAt, updatedAt FROM posts WHERE id = ?', [result.insertId],
+              'SELECT id, title, url, userId, createdAt, updatedAt FROM posts WHERE id = ?', [result.insertId],
               function(err, result) {
                 if (err) {
                   callback(err);
@@ -102,10 +102,10 @@ module.exports = function RedditAPI(conn) {
         posts.userId, 
         posts.createdAt, 
         posts.updatedAt, 
-        users.id, 
-        users.username, 
+        users.id AS usersUserId, 
+        users.username AS usersUserName, 
         users.createdAt AS usersCreatedAt, 
-        users.updatedAt As userUpdatedAt
+        users.updatedAt As usersUpdatedAt
         FROM posts
         JOIN users on posts.userId = users.id
         ORDER BY createdAt ASC
@@ -116,7 +116,72 @@ module.exports = function RedditAPI(conn) {
             callback(err);
           }
           else {
-            callback(null, results);
+            callback(null, results.map(function(item) {
+              return ({
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+                userId: item.userId,
+                user: {
+                    id: item.usersUserId,
+                    username: item.usersUserName,
+                    createdAt: item.usersCreatedAt,
+                    updatedAt: item.usersUpdatedAt
+                }
+              });
+            }));
+          }
+        }
+      );
+    },
+    getAllPostsForUser: function(userId, options, callback) {
+      if (!callback) {
+        callback = options;
+        options = {};
+      }
+      var limit = options.numPerPage || 25;
+      var offset = (options.page || 0) * limit;
+      
+      conn.query(`
+        SELECT posts.id, 
+        posts.title, 
+        posts.url, 
+        posts.userId, 
+        posts.createdAt, 
+        posts.updatedAt, 
+        users.id,
+        users.username,
+        users.createdAt AS usersCreatedAt, 
+        users.updatedAt AS userUpdatedAt
+        FROM posts
+        JOIN users on posts.userId = users.id
+        WHERE users.id = ?
+        ORDER BY createdAt ASC
+        LIMIT ? OFFSET ?`
+        , [userId, limit, offset],
+        function(err, results) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            callback(null, results.map(function(item) {
+              return ({
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+                userId: item.userId,
+                user: {
+                    id: item.usersUserId,
+                    username: item.usersUserName,
+                    createdAt: item.usersCreatedAt,
+                    updatedAt: item.usersUpdatedAt
+                }
+              });
+            }));
           }
         }
       );

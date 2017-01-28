@@ -185,6 +185,54 @@ module.exports = function RedditAPI(conn) {
           }
         }
       );
+    },
+    getSinglePost: function(postId, callback) {
+      if (!callback) {
+        callback = postId;
+        postId = {};
+      }
+      var limit = postId.numPerPage || 1;
+      var offset = (postId.page || 0) * limit;
+      
+      conn.query(`
+        SELECT posts.id, 
+        posts.title, 
+        posts.url, 
+        posts.userId, 
+        posts.createdAt, 
+        posts.updatedAt, 
+        users.id AS usersUserId,
+        users.username AS usersUserName,
+        users.createdAt AS usersCreatedAt, 
+        users.updatedAt AS usersUpdatedAt
+        FROM posts
+        JOIN users on posts.userId = users.id
+        WHERE posts.id = ?`
+        , [postId],
+        function(err, results) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            callback(null, results.map(function(item) {
+              return ({
+                id: item.id,
+                title: item.title,
+                url: item.url,
+                createdAt: item.createdAt,
+                updatedAt: item.updatedAt,
+                userId: item.userId,
+                user: {
+                    id: item.usersUserId,
+                    username: item.usersUserName,
+                    createdAt: item.usersCreatedAt,
+                    updatedAt: item.usersUpdatedAt
+                }
+              });
+            }));
+          }
+        }
+      );
     }
   };
 };

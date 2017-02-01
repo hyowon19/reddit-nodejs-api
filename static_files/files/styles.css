@@ -1,0 +1,36 @@
+body {
+  background-color: black;
+  width: 70%;
+  margin: 0 auto;
+}
+
+#contents h1 {
+  text-align: center;
+  color: #ff5b5b;
+  font-style: italic;
+  font-family: arial;
+}
+
+#contents li {
+  list-style: none;
+  font-family: arial;
+  text-align: center; 
+}
+
+#contents a {
+  text-decoration: none;
+  font-size: 25px;
+  font-weight: 600;
+  color: #FFFFFF;
+  opacity: 0.9;
+  margin-bottom: 8px;
+}
+
+
+#contents p {
+  margin: 0 auto;
+  color: #FFFFFF;
+  font-size: 14px;
+  font-family: sans-serif;
+  text-align: center;
+}

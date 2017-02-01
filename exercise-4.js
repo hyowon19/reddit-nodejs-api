@@ -18,63 +18,6 @@ var reddit = require('./reddit');
 var redditAPI = reddit(connection);
 
 
-// redditAPI.getAllPosts({numPerPage: 5, page: 0}, function(err, userPosts) {
-//   if (err) {
-//     console.log(err);
-//   }
-//   else {
-//     console.log(userPosts);
-//   }
-// });
-///// end inserting reddit
-
-app.get('/hello', function(request, response) {
-
-  var result = request.query.name;
-
-  response.end(`<h1>Hello ${result}!</h1>`);
-});
-
-
-// Exercise 2B: A wild parameter
-app.get('/hello/:nameId', function(request, response) {
-  var result2 = request.params.nameId;
-
-  response.end(`<h1>Hello ${result2}!</h1>`);
-});
-
-// Exercise 3
-app.get('/calculator/:operation', function(request, response) {
-  var num1 = request.query.num1;
-  var num2 = request.query.num2;
-  var mathOp = request.params.operation;
-  var mathResult = 0;
-  var mathObj = {
-    "operator": mathOp,
-    "firstOperand": num1,
-    "secondOperand": num2,
-    "solution": mathResult
-  };
-
-  if (mathOp === 'add') {
-    mathObj.solution = +num1 + +num2;
-  }
-  else if (mathOp === 'sub') {
-    mathObj.solution = +num1 - +num2;
-  }
-  else if (mathOp === 'mult') {
-    mathObj.solution = +num1 * +num2;
-  }
-  else if (mathOp === 'div') {
-    mathObj.solution = +num1 / +num2;
-  }
-  else {
-    mathObj.solution = "Error 400";
-  }
-
-  response.end(`<h1> ${JSON.stringify(mathObj)}</h1>`);
-});
-
 // Exercise 4
 app.get('/posts', function(request, response) {
   redditAPI.getAllPosts({

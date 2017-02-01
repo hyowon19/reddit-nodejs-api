@@ -1,20 +1,6 @@
 var express = require('express');
 var app = express();
 
-app.get('/hello', function(request,response){
-  
-  var result = request.query.name;
-  
-  response.end(`<h1>Hello ${result}!</h1>`);
-});
-
-
-// 2B: A wild parameter
-app.get('/hello/:nameId', function(request, response) {
-  var result2 =  request.params.nameId;
-  
-  response.end(`<h1>Hello ${result2}!</h1>`);
-});
   
 //3
 app.get('/calculator/:operation', function(request, response) {
@@ -47,6 +33,9 @@ app.get('/calculator/:operation', function(request, response) {
   
   response.end(`<h1> ${JSON.stringify(mathObj)}</h1>`);
 });
+
+
+
 
 /* YOU DON'T HAVE TO CHANGE ANYTHING BELOW THIS LINE :) */
 

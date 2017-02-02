@@ -131,7 +131,7 @@ module.exports = function RedditAPI(conn) {
         LEFT JOIN subreddit ON posts.subredditId = subreddit.id
         LEFT JOIN votes ON posts.id = postId
         GROUP BY postId
-        ORDER BY voteScore DESC, vote DESC
+        ORDER BY ${sort}
         LIMIT ? OFFSET ?`
         //$ {sort}
         , [limit, offset],

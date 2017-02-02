@@ -61,7 +61,7 @@ module.exports = function RedditAPI(conn) {
     },
     createPost: function(post, callback) {
       conn.query(
-        'INSERT INTO posts (userId, title, url, createdAt) VALUES (?, ?, ?, ?)', [post.userId, post.title, post.url, new Date()],
+        'INSERT INTO posts (userId, title, url, subredditId, createdAt) VALUES (?, ?, ?, ?, ?)', [post.userId, post.title, post.url, post.subredditId, new Date()],
         function(err, result) {
           if (err) {
             callback(err);
@@ -72,7 +72,7 @@ module.exports = function RedditAPI(conn) {
             the post and send it to the caller!
             */
             conn.query(
-              'SELECT id, title, url, userId, createdAt, updatedAt FROM posts WHERE id = ?', [result.insertId],
+              'SELECT id, title, url, userId, subredditId, createdAt, updatedAt FROM posts WHERE id = ?', [result.insertId],
               function(err, result) {
                 if (err) {
                   callback(err);
@@ -94,6 +94,20 @@ module.exports = function RedditAPI(conn) {
       }
       var limit = options.numPerPage || 25; // if options.numPerPage is "falsy" then use 25
       var offset = (options.page || 0) * limit;
+      var sort = options.sort || `top`; 
+      
+      if (sort === 'top') {
+        sort = `voteScore DESC`;
+      }
+      else if (sort === 'newest') {
+        sort = 'posts.createdAt DESC';
+      }
+      else if (sort === 'hotness') {
+        sort = `voteScore DESC, posts.createdAt ASC `;
+      }
+      else if (sort === 'controversial') {
+        sort = `voteScore DESC, vote DESC`;
+      }
       
       conn.query(`
         SELECT posts.id, 
@@ -105,11 +119,21 @@ module.exports = function RedditAPI(conn) {
         users.id AS usersUserId, 
         users.username AS usersUserName, 
         users.createdAt AS usersCreatedAt, 
-        users.updatedAt As usersUpdatedAt
+        users.updatedAt As usersUpdatedAt,
+        subreddit.id AS subRedditId,
+        subreddit.name AS subRedditName,
+        subreddit.description AS subRedditDescription,
+        subreddit.createdAt AS subRedditCreatedAt,
+        subreddit.updatedAt AS subRedditUpdatedAt,
+        SUM(vote) as voteScore
         FROM posts
-        JOIN users on posts.userId = users.id
-        ORDER BY createdAt ASC
+        LEFT JOIN users ON posts.userId = users.id
+        LEFT JOIN subreddit ON posts.subredditId = subreddit.id
+        LEFT JOIN votes ON posts.id = postId
+        GROUP BY postId
+        ORDER BY voteScore DESC, vote DESC
         LIMIT ? OFFSET ?`
+        //$ {sort}
         , [limit, offset],
         function(err, results) {
           if (err) {
@@ -125,10 +149,17 @@ module.exports = function RedditAPI(conn) {
                 updatedAt: item.updatedAt,
                 userId: item.userId,
                 user: {
-                    id: item.usersUserId,
-                    username: item.usersUserName,
-                    createdAt: item.usersCreatedAt,
-                    updatedAt: item.usersUpdatedAt
+                  id: item.usersUserId,
+                  username: item.usersUserName,
+                  createdAt: item.usersCreatedAt,
+                  updatedAt: item.usersUpdatedAt
+                },
+                subreddit: {
+                  id: item.subRedditId,
+                  name: item.subRedditName,
+                  description: item.subRedditDescription,
+                  createdAt: item.subRedditCreatedAt,
+                  updatedAt: item.subRedditUpdatedAt
                 }
               });
             }));
@@ -175,10 +206,10 @@ module.exports = function RedditAPI(conn) {
                 updatedAt: item.updatedAt,
                 userId: item.userId,
                 user: {
-                    id: item.usersUserId,
-                    username: item.usersUserName,
-                    createdAt: item.usersCreatedAt,
-                    updatedAt: item.usersUpdatedAt
+                  id: item.usersUserId,
+                  username: item.usersUserName,
+                  createdAt: item.usersCreatedAt,
+                  updatedAt: item.usersUpdatedAt
                 }
               });
             }));
@@ -223,16 +254,86 @@ module.exports = function RedditAPI(conn) {
                 updatedAt: item.updatedAt,
                 userId: item.userId,
                 user: {
-                    id: item.usersUserId,
-                    username: item.usersUserName,
-                    createdAt: item.usersCreatedAt,
-                    updatedAt: item.usersUpdatedAt
+                  id: item.usersUserId,
+                  username: item.usersUserName,
+                  createdAt: item.usersCreatedAt,
+                  updatedAt: item.usersUpdatedAt
                 }
               });
             }));
           }
         }
       );
+    },
+    createSubreddit: function(sub, callback) {
+      conn.query(
+        'INSERT INTO subreddit (name, description, createdAt) VALUES (?, ?, ?)', [sub.name, sub.description, new Date()],
+        function(err, result) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            conn.query(
+              'SELECT id, name, description, createdAt, updatedAt FROM subreddit WHERE id = ?', [result.insertId],
+              function(err, result) {
+                if (err) {
+                  callback(err);
+                }
+                else {
+                  callback(null, result[0]);
+                }
+              }
+            );
+          }
+        }
+      );
+    },
+    getAllSubreddits: function(callback, options) {
+      conn.query(`
+        SELECT id, 
+        name,
+        description,
+        createdAt,
+        updatedAt
+        FROM subreddit
+        ORDER BY createdAt ASC
+        `,
+        function(err, result) {
+          if (err) {
+            callback(err);
+          }
+          else {
+            callback(null, function(result){
+              return result;
+            });
+          }
+        }
+      );
+    },
+    createOrUpdateVote: function(vote, callback) {
+      var postId = vote.postId;
+      var userId = vote.userId;
+      var voteDir = vote.voteDir;
+      if (voteDir !== 0 && voteDir !== 1 && voteDir !== -1) {
+        console.log("Vote did not equal 1, 0 or -1.");
+      }
+      else {
+        conn.query(`
+          INSERT INTO votes 
+          SET postId=?, userId=?, vote=?, createdAt = NOW() 
+          ON DUPLICATE 
+          KEY UPDATE vote=?`, [postId, userId, voteDir, voteDir],
+          function(err, results) {
+            if (err) {
+              callback(err);
+            }
+            else {
+              callback(null, results);
+              return results;
+            }
+          }
+        );
+      }
     }
   };
 };
